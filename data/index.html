@@ -1,0 +1,357 @@
+<!doctype html>
+
+<html lang="sv-SE">
+<head>
+
+	<meta charset="utf-8">
+
+	<title>BeerBrewer</title>
+	<meta name="description" content="BeerBrewer">
+	<meta name="author" content="Ola Wallin/Filip Roos Eriksson">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<script src="jquery-3.4.1.min.js"></script>
+	<style>
+		html, body {
+			padding: 0px;
+			margin: 0px;
+			color: hsl(240, 25%, 95%);
+			background: #50514F;
+    		font-family: Verdana, Geneva, sans-serif;
+			font-size: 1.1rem;
+			font-weight: 400;
+		}
+
+		H1, H2, H3, p {
+			padding: 0px;
+			margin: 0px;
+		}
+
+		.btn {
+  			background-color: #A4BAB7;
+  			border: none;
+  			color: #2D3332;
+  			padding: 8px 16px;
+  			text-decoration: none;
+			font-weight: bold;
+  			margin: 4px 1px;
+  			cursor: pointer;
+		}
+
+		header {
+			display: flex;
+			justify-content: center;
+			flex-direction: column;
+			align-items: center;
+		}
+
+		main {
+			display: flex;
+			flex-direction: column;
+			justify-content: center;
+			align-items: center;
+			padding-top: 15px;
+			padding-bottom: 15px;
+		}
+
+		section {
+			padding-bottom: 10px;
+		}
+
+		.temp {
+			display: flex;
+			justify-content: space-between;
+		}
+		.temp > section {
+			display: flex;
+			flex-direction: column;
+			justify-content: center;
+			align-items: center;
+			align-content: space-between;
+			margin: 10px;
+		}
+		.temp-buttons {
+			display: flex;
+			justify-content: space-around;
+			align-content: space-between;
+		}
+		.temp-buttons > p { align-self: center; margin: 4px; color: #B3B3B3; }
+
+		.btn-active {
+			background-color: #7DA794;
+		}
+
+		footer {
+			display: flex;
+			justify-content: space-evenly;
+		}
+	</style>
+
+</head>
+<body>
+
+<header>
+	<h1>BeerBrewer</h1>
+</header>
+
+<main>
+
+	<section class="step-buttons">
+		<input type="button" id="man" class="btn man btn-active" value="MAN">
+        <input type="button" id="s1" class="btn s1" value="S1">
+        <input type="button" id="s2" class="btn s2" value="S2">
+        <input type="button" id="s3" class="btn s3" value="S3">
+		<input type="button" id="s4" class="btn s4" value="S4">
+		<input type="button" id="s5" class="btn s5" value="S5">
+		<input type="button" id="s6" class="btn s6" value="S6">
+	</section>
+
+	<section class="temp">
+		<section>
+			<h3><span class="actualTemp">20</span><span> C</span></h3>
+			<section class="temp-buttons">
+				<input type="button" class="btn tempMinus" value="-">
+				<p><span class="setTemp">29</span><span> C</span></p>
+				<input type="button" class="btn tempPlus" value="+">
+			</section>
+		</section>
+		<section>
+			<h3><span class="actTimeMin">00</span><span>:</span><span class="actTimeSec">00</span></h3>
+			<section class="temp-buttons">
+				<input type="button" class="btn timeMinus" value="-">
+				<p><span class="setTime">00</span><span>:00</span></p>
+				<input type="button" class="btn timePlus" value="+">
+			</section>
+		</section>
+	</section>
+
+	<section>
+		<input type="button" class="btn pump" value="Pump">
+		<input type="button" class="btn nextButton" value="Next step">
+		<input type="button" class="btn startButton" value="Start">
+		<input type="button" class="btn stopButton" value="Stop">
+	</section>
+	
+</main>
+
+<footer>
+	<a href="/settings"><input type="button" class="btn" value="Inställningar"></a>
+</footer>
+
+</body>
+<script>
+	$('.startButton').click(function() {		
+        $.get("/start", function(data){
+			if (data == 0){
+				$('.startButton').val("Start");
+			} else if (data == 1) {
+				$('.startButton').val("Pause");
+			} else if (data == 2) {
+				$('.startButton').val("Start");
+			}
+		});
+    });
+	$('.stopButton').click(function() {		
+        $.get("/stop", function(data){
+			$('.startButton').val("Start");
+		});
+    });
+	$('.tempPlus').click(function() {		
+        $.get("/tempplus", function(data){
+			console.log(data);
+			$('.setTemp').text(data);
+		});
+    });
+	$('.tempMinus').click(function() {		
+        $.get("/tempminus", function(data){
+			$('.setTemp').text(data);
+		});
+    });
+	$('.timePlus').click(function() {		
+        $.get("/timeplus", function(data){
+			console.log(data);
+			if (data <= 9){
+				$('.setTime').text("0" + data);
+			} else {
+				$('.setTime').text(data);
+			}			
+		});
+    });
+	$('.timeMinus').click(function() {		
+        $.get("/timeminus", function(data){
+			console.log(data);
+			if (data <= 9){
+				$('.setTime').text("0" + data);
+			} else {
+				$('.setTime').text(data);
+			}
+		});
+    });
+	$('.pump').click(function() {		
+        $.get("/pump", function(data){
+			console.log(data);
+		});
+    });
+	$('.man').click(function() {		
+        $.post("/changestep",
+  		{
+    		step: "man"    		
+  		},
+  		function(data){
+			console.log(data);
+		});
+    });
+	$('.s1').click(function() {		
+        $.post("/changestep",
+  		{
+    		step: "1"    		
+  		},
+  		function(data){
+			console.log(data);
+		});
+    });
+	$('.s2').click(function() {		
+        $.post("/changestep",
+  		{
+    		step: "2"    		
+  		},
+  		function(data){
+			console.log(data);
+		});
+    });
+	$('.s3').click(function() {		
+        $.post("/changestep",
+  		{
+    		step: "3"    		
+  		},
+  		function(data){
+			console.log(data);
+		});
+    });
+	$('.s4').click(function() {		
+        $.post("/changestep",
+  		{
+    		step: "4"    		
+  		},
+  		function(data){
+			console.log(data);
+		});
+    });
+	$('.s5').click(function() {		
+        $.post("/changestep",
+  		{
+    		step: "5"    		
+  		},
+  		function(data){
+			console.log(data);
+		});
+    });
+	$('.s6').click(function() {		
+        $.post("/changestep",
+  		{
+    		step: "6"    		
+  		},
+  		function(data){
+			console.log(data);
+		});
+    });
+	setInterval(function ( ) {
+		$.get("/stats", function(data){
+			console.log("Data: " + data);
+			var res = data.split(",");
+			var statActualTemp = res[0];
+			var statActualStep = res[1];
+			var statSetTemp = res[2];
+			var statPump = res[3];
+			var statActTimeMin = res[4];
+			var statActTimeSec = res[5];
+			var statSetTimeMin = res[6];
+			var statPlayPauseStop = res[7];
+			$('.actualTemp').text(statActualTemp);
+			$('.setTemp').text(statSetTemp);
+    		if (statActualStep == 0){
+				//man
+				$(".man").addClass("btn-active");
+				$(".s1").removeClass("btn-active");
+				$(".s2").removeClass("btn-active");
+				$(".s3").removeClass("btn-active");
+				$(".s4").removeClass("btn-active");
+				$(".s5").removeClass("btn-active");
+				$(".s6").removeClass("btn-active");
+			} else if (statActualStep == 1) {
+				//s1
+				$(".s1").addClass("btn-active");
+				$(".man").removeClass("btn-active");
+				$(".s2").removeClass("btn-active");
+				$(".s3").removeClass("btn-active");
+				$(".s4").removeClass("btn-active");
+				$(".s5").removeClass("btn-active");
+				$(".s6").removeClass("btn-active");
+			} else if (statActualStep == 2) {
+				//s2
+				$(".s2").addClass("btn-active");
+				$(".man").removeClass("btn-active");
+				$(".s1").removeClass("btn-active");
+				$(".s3").removeClass("btn-active");
+				$(".s4").removeClass("btn-active");
+				$(".s5").removeClass("btn-active");
+				$(".s6").removeClass("btn-active");
+			} else if (statActualStep == 3) {
+				//s3
+				$(".s3").addClass("btn-active");
+				$(".man").removeClass("btn-active");
+				$(".s1").removeClass("btn-active");
+				$(".s2").removeClass("btn-active");
+				$(".s4").removeClass("btn-active");
+				$(".s5").removeClass("btn-active");
+				$(".s6").removeClass("btn-active");
+			} else if (statActualStep == 4) {
+				//s4
+				$(".s4").addClass("btn-active");
+				$(".man").removeClass("btn-active");
+				$(".s1").removeClass("btn-active");
+				$(".s2").removeClass("btn-active");
+				$(".s3").removeClass("btn-active");
+				$(".s5").removeClass("btn-active");
+				$(".s6").removeClass("btn-active");
+			} else if (statActualStep == 5) {
+				//s5
+				$(".s5").addClass("btn-active");
+				$(".man").removeClass("btn-active");
+				$(".s1").removeClass("btn-active");
+				$(".s2").removeClass("btn-active");
+				$(".s3").removeClass("btn-active");
+				$(".s4").removeClass("btn-active");
+				$(".s6").removeClass("btn-active");
+			} else if (statActualStep == 6) {
+				//s6
+				$(".s6").addClass("btn-active");
+				$(".man").removeClass("btn-active");
+				$(".s1").removeClass("btn-active");
+				$(".s2").removeClass("btn-active");
+				$(".s3").removeClass("btn-active");
+				$(".s4").removeClass("btn-active");
+				$(".s5").removeClass("btn-active");
+			}
+			if (statPump == 1){
+				$(".pump").addClass("btn-active");
+			} else {
+				$(".pump").removeClass("btn-active");
+			}
+			$('.actTimeMin').text(statActTimeMin);			
+			$('.actTimeSec').text(statActTimeSec);
+			if (statSetTimeMin <= 9){
+				$('.setTime').text("0" + statSetTimeMin);
+			} else {
+				$('.setTime').text(statSetTimeMin);
+			}
+			if (statPlayPauseStop == 0){ //stopped
+				$('.startButton').val("Start");
+			} else if (statPlayPauseStop == 1) { //started
+				$('.startButton').val("Pause");
+			} else if (statPlayPauseStop ==2) { //paused
+				$('.startButton').val("Start");
+			}
+  		});	  
+	}, 1000 ) ;
+</script>
+</html>

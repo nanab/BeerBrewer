@@ -10,6 +10,7 @@
 	<meta name="author" content="Ola Wallin/Filip Roos Eriksson">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<script src="jquery-3.4.1.min.js"></script>
+	<script src="jquery.finger.js"></script>
 	<style>
 		html, body {
 			padding: 0px;
@@ -84,6 +85,37 @@
 			display: flex;
 			justify-content: space-evenly;
 		}
+		@media only screen 
+		and (min-device-width : 768px) 
+		and (max-device-width : 1024px) 
+		and (orientation : landscape) { 
+			footer {
+			display: flex;
+			justify-content: space-evenly;
+			text-align: center;
+			margin:auto;
+			}
+			.btn {
+  			background-color: #A4BAB7;
+  			border: none;
+  			color: #2D3332;
+  			padding: 8px 16px;
+  			text-decoration: none;
+			font-weight: bold;
+  			margin: 4px 1px;
+  			cursor: pointer;
+			font-size: 30px;
+			touch-action: manipulation;
+			}
+			H1, H2, H3, p {
+			padding: 0px;
+			margin: 0px;
+			font-size: 30px;
+			}
+			.btn-active {
+			background-color: rgb(37, 112, 78);
+		}
+		}
 	</style>
 
 </head>
@@ -134,7 +166,7 @@
 </main>
 
 <footer>
-	<a href="/settings"><input type="button" class="btn" value="Inställningar"></a>
+	<input type="button" class="btn" value="Inställningar">
 </footer>
 
 </body>
@@ -155,18 +187,31 @@
 			$('.startButton').val("Start");
 		});
     });
-	$('.tempPlus').click(function() {		
-        $.get("/tempplus", function(data){
+	$('.tempPlus').on('tap', function(e) {
+		$.get("/tempplus", function(data){
+			console.log(data);
+			$('.setTemp').text(data);
+		});
+	});
+	$('.tempPlus').on('press', function(e) {
+		$.get("/temppluslong", function(data){
 			console.log(data);
 			$('.setTemp').text(data);
 		});
     });
-	$('.tempMinus').click(function() {		
-        $.get("/tempminus", function(data){
+	$('.tempMinus').on('tap', function(e) {
+		$.get("/tempminus", function(data){
+			console.log(data);
+			$('.setTemp').text(data);
+		});
+	});
+	$('.tempMinus').on('press', function(e) {
+		$.get("/tempminuslong", function(data){
+			console.log(data);
 			$('.setTemp').text(data);
 		});
     });
-	$('.timePlus').click(function() {		
+	$('.timePlus').on('tap', function(e) {		
         $.get("/timeplus", function(data){
 			console.log(data);
 			if (data <= 9){
@@ -175,9 +220,29 @@
 				$('.setTime').text(data);
 			}			
 		});
+	});
+	$('.timePlus').on('press', function(e) {		
+        $.get("/timepluslong", function(data){
+			console.log(data);
+			if (data <= 9){
+				$('.setTime').text("0" + data);
+			} else {
+				$('.setTime').text(data);
+			}			
+		});
     });
-	$('.timeMinus').click(function() {		
+	$('.timeMinus').on('tap', function(e) {		
         $.get("/timeminus", function(data){
+			console.log(data);
+			if (data <= 9){
+				$('.setTime').text("0" + data);
+			} else {
+				$('.setTime').text(data);
+			}
+		});
+	});
+	$('.timeMinus').on('press', function(e) {		
+        $.get("/timeminuslong", function(data){
 			console.log(data);
 			if (data <= 9){
 				$('.setTime').text("0" + data);
@@ -190,7 +255,12 @@
         $.get("/pump", function(data){
 			console.log(data);
 		});
-    });
+	});
+	$('.nextButton').click(function() {		
+        $.get("/next", function(data){
+			console.log(data);
+		});
+	});
 	$('.man').click(function() {		
         $.post("/changestep",
   		{
@@ -266,6 +336,7 @@
 			var statActTimeSec = res[5];
 			var statSetTimeMin = res[6];
 			var statPlayPauseStop = res[7];
+			var statNext = res[8];
 			$('.actualTemp').text(statActualTemp);
 			$('.setTemp').text(statSetTemp);
     		if (statActualStep == 0){
@@ -336,6 +407,11 @@
 				$(".pump").addClass("btn-active");
 			} else {
 				$(".pump").removeClass("btn-active");
+			}
+			if (statNext== 1){
+				$(".nextButton").addClass("btn-active");
+			} else {
+				$(".nextButton").removeClass("btn-active");
 			}
 			$('.actTimeMin').text(statActTimeMin);			
 			$('.actTimeSec').text(statActTimeSec);

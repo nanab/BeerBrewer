@@ -18,8 +18,8 @@
 // ------------------------------------------------
 // Headers to include
 // ------------------------------------------------
-#include <GUIslice.h>
-#include <GUIslice_drv.h>
+#include "GUIslice.h"
+#include "GUIslice_drv.h"
 
 // Include any extended elements
 //<Includes !Start!>
@@ -80,7 +80,9 @@ void changeSetTimeDisplay();
 void handleTimerFinished();
 void configModeCallback();
 void saveConfigFile();
-
+void sendPushNotification(String message);
+void updatePushServer();
+void stopTimerNextStep();
 //set variables for brewer
 int autoOrMan = 0; //0 = man 1 = auto
 int selectedStep = 1; //0 = no step selected steps avaliable 1 - 6
@@ -169,7 +171,7 @@ CountUpDownTimer countElapsedTimer(UP, HIGH);
 
 //Delay
 unsigned long previousMillis = 0;
-const long interval = 5000;
+const long interval = 3000;
 
 //define settings file stored in flash
 #define BREWER_CONFIG  "/brewerConfig.json"
@@ -180,6 +182,15 @@ const char* host = "BeerBrewer";
 ESP8266WebServer server(80);
 ESP8266HTTPUpdateServer httpUpdater;
 WiFiManager wifiManager;
+//Pushover
+int pushoverEnabled = 1; //pushover enabled or not
+String pushoverAppKey =  "apgn8y4jycha1hv95t59ctkbbhzrzg";
+String pushoverUserKey = "u9d82yen11p58thvbkvpsa269of3jw";  // This can be a group or user
+WiFiClientSecure https;
+
+bool isSendPush = false;
+String pushParameters;
+
 //<Resources !End!>
 
 // ------------------------------------------------
@@ -338,6 +349,8 @@ void autoButtonPressed() {
         gslc_ElemSetFillEn(&m_gui,m_pElemPlusBtn,true);
       }
       gslc_ElemSetTxtStr(&m_gui, m_pElemS1, "S1");
+      tempTargetTimeMin = s1TargetTimeMin;
+      tempTargetTemp = s1TargetTemp;
       changeSetTempDisplay(s1TargetTemp);
       changeSetTimeDisplay(s1TargetTimeMin);
     } else if (selectedStep == 2){
@@ -352,6 +365,8 @@ void autoButtonPressed() {
         gslc_ElemSetFillEn(&m_gui,m_pElemPlusBtn,true);
       }
       gslc_ElemSetTxtStr(&m_gui, m_pElemS2, "S2");
+      tempTargetTimeMin = s2TargetTimeMin;
+      tempTargetTemp = s2TargetTemp;
       changeSetTempDisplay(s2TargetTemp);
       changeSetTimeDisplay(s2TargetTimeMin);
     } else if (selectedStep == 3){
@@ -366,6 +381,8 @@ void autoButtonPressed() {
         gslc_ElemSetFillEn(&m_gui,m_pElemPlusBtn,true);
       }
       gslc_ElemSetTxtStr(&m_gui, m_pElemS3, "S3");
+      tempTargetTimeMin = s3TargetTimeMin;
+      tempTargetTemp = s3TargetTemp;
       changeSetTempDisplay(s3TargetTemp);
       changeSetTimeDisplay(s3TargetTimeMin);
     } else if (selectedStep == 4){
@@ -380,6 +397,8 @@ void autoButtonPressed() {
         gslc_ElemSetFillEn(&m_gui,m_pElemPlusBtn,true);
       }
       gslc_ElemSetTxtStr(&m_gui, m_pElemS4, "S4");
+      tempTargetTimeMin = s4TargetTimeMin;
+      tempTargetTemp = s4TargetTemp;
       changeSetTempDisplay(s4TargetTemp);
       changeSetTimeDisplay(s4TargetTimeMin);
     } else if (selectedStep == 5){
@@ -394,6 +413,8 @@ void autoButtonPressed() {
         gslc_ElemSetFillEn(&m_gui,m_pElemPlusBtn,true);
       }
       gslc_ElemSetTxtStr(&m_gui, m_pElemS5, "S5");
+      tempTargetTimeMin = s5TargetTimeMin;
+      tempTargetTemp = s5TargetTemp;
       changeSetTempDisplay(s5TargetTemp);
       changeSetTimeDisplay(s5TargetTimeMin);
     } else if (selectedStep == 6){
@@ -408,6 +429,8 @@ void autoButtonPressed() {
         gslc_ElemSetFillEn(&m_gui,m_pElemPlusBtn,true);
       }
       gslc_ElemSetTxtStr(&m_gui, m_pElemS6, "S6");
+      tempTargetTimeMin = s6TargetTimeMin;
+      tempTargetTemp = s6TargetTemp;
       changeSetTempDisplay(s6TargetTemp);
       changeSetTimeDisplay(s6TargetTimeMin);
       }         
@@ -426,6 +449,8 @@ void autoButtonPressed() {
     gslc_ElemSetTxtStr(&m_gui, m_pElemS4, "");
     gslc_ElemSetTxtStr(&m_gui, m_pElemS5, "");
     gslc_ElemSetTxtStr(&m_gui, m_pElemS6, "");
+    tempTargetTimeMin = manTargetTimeMin;
+    tempTargetTemp = manTargetTemp;
     changeSetTempDisplay(manTargetTemp);
     changeSetTimeDisplay(manTargetTimeMin);
     autoOrMan = 0;
@@ -465,57 +490,63 @@ void plusButtonPressed(){
     if (autoOrMan == 0){
       //do nothing
     } else {
-      if (selectedStep == 1){
-        if (s1Next == 0) {
-          s1Next = 1;
-          gslc_ElemSetFillEn(&m_gui,m_pElemPlusBtn,true);
-        } else {
-          s1Next = 0;
-          gslc_ElemSetFillEn(&m_gui,m_pElemPlusBtn,false);
-        }
-      } else if (selectedStep == 2){
-        if (s2Next == 0) {
-          s2Next = 1;
-          gslc_ElemSetFillEn(&m_gui,m_pElemPlusBtn,true);
-        } else {
-          s2Next = 0;
-          gslc_ElemSetFillEn(&m_gui,m_pElemPlusBtn,false);
-        }
-      } else if (selectedStep == 3){
-        if (s3Next == 0) {
-          s3Next = 1;
-          gslc_ElemSetFillEn(&m_gui,m_pElemPlusBtn,true);
-        } else {
-          s3Next = 0;
-          gslc_ElemSetFillEn(&m_gui,m_pElemPlusBtn,false);
-        }
-      } else if (selectedStep == 4){
-        if (s4Next == 0) {
-          s4Next = 1;
-          gslc_ElemSetFillEn(&m_gui,m_pElemPlusBtn,true);
-        } else {
-          s4Next = 0;
-          gslc_ElemSetFillEn(&m_gui,m_pElemPlusBtn,false);
-        }
-      } else if (selectedStep == 5){
-        if (s5Next == 0) {
-          s5Next = 1;
-          gslc_ElemSetFillEn(&m_gui,m_pElemPlusBtn,true);
-        } else {
-          s5Next = 0;
-          gslc_ElemSetFillEn(&m_gui,m_pElemPlusBtn,false);
-        }
-      } else if (selectedStep == 6){
-        if (s6Next == 0) {
-          s6Next = 1;
-          gslc_ElemSetFillEn(&m_gui,m_pElemPlusBtn,true);
-        } else {
-          s6Next = 0;
-          gslc_ElemSetFillEn(&m_gui,m_pElemPlusBtn,false);
+      if (playPauseStop == 1){
+        runningStep + 1;
+        stopTimerNextStep();
+        stepConfigButtonPressed();
+      } else {
+        if (selectedStep == 1){
+          if (s1Next == 0) {
+            s1Next = 1;
+            gslc_ElemSetFillEn(&m_gui,m_pElemPlusBtn,true);
+          } else {
+            s1Next = 0;
+            gslc_ElemSetFillEn(&m_gui,m_pElemPlusBtn,false);
+          }
+        } else if (selectedStep == 2){
+          if (s2Next == 0) {
+            s2Next = 1;
+            gslc_ElemSetFillEn(&m_gui,m_pElemPlusBtn,true);
+          } else {
+            s2Next = 0;
+            gslc_ElemSetFillEn(&m_gui,m_pElemPlusBtn,false);
+          }
+        } else if (selectedStep == 3){
+          if (s3Next == 0) {
+            s3Next = 1;
+            gslc_ElemSetFillEn(&m_gui,m_pElemPlusBtn,true);
+          } else {
+            s3Next = 0;
+            gslc_ElemSetFillEn(&m_gui,m_pElemPlusBtn,false);
+          }
+        } else if (selectedStep == 4){
+          if (s4Next == 0) {
+            s4Next = 1;
+            gslc_ElemSetFillEn(&m_gui,m_pElemPlusBtn,true);
+          } else {
+            s4Next = 0;
+            gslc_ElemSetFillEn(&m_gui,m_pElemPlusBtn,false);
+          }
+        } else if (selectedStep == 5){
+          if (s5Next == 0) {
+            s5Next = 1;
+            gslc_ElemSetFillEn(&m_gui,m_pElemPlusBtn,true);
+          } else {
+            s5Next = 0;
+            gslc_ElemSetFillEn(&m_gui,m_pElemPlusBtn,false);
+          }
+        } else if (selectedStep == 6){
+          if (s6Next == 0) {
+            s6Next = 1;
+            gslc_ElemSetFillEn(&m_gui,m_pElemPlusBtn,true);
+          } else {
+            s6Next = 0;
+            gslc_ElemSetFillEn(&m_gui,m_pElemPlusBtn,false);
+          }
         }
       }
-    }
-    saveConfigFile();
+      saveConfigFile();
+    }    
   } else {
     int test = millis() - m_nTimePressStart;
     if (test >= 500){
@@ -539,7 +570,7 @@ void plusButtonPressed(){
       }
       m_nTimePressStart = 0;
     }
-    saveConfigFile();
+    //saveConfigFile();
   }  
 }
 
@@ -637,7 +668,7 @@ void minusButtonPressed(){
       }
       m_nTimePressStart = 0;
     }
-    saveConfigFile(); 
+    //saveConfigFile(); 
   } 
 }
 
@@ -687,6 +718,7 @@ void stepConfigButtonPressed(){
         gslc_ElemSetFillEn(&m_gui,m_pElemPlusBtn,true);
       }
       tempTargetTimeMin = s1TargetTimeMin;
+      tempTargetTemp = s1TargetTemp;
       gslc_ElemSetTxtStr(&m_gui, m_pElemS1, "S1");
       gslc_ElemSetTxtStr(&m_gui, m_pElemS2, "");
       gslc_ElemSetTxtStr(&m_gui, m_pElemS3, "");
@@ -707,7 +739,8 @@ void stepConfigButtonPressed(){
       } else {
         gslc_ElemSetFillEn(&m_gui,m_pElemPlusBtn,true);
       }
-      tempTargetTimeMin = s2TargetTimeMin;      
+      tempTargetTimeMin = s2TargetTimeMin;
+      tempTargetTemp = s2TargetTemp;      
       gslc_ElemSetTxtStr(&m_gui, m_pElemS1, "");
       gslc_ElemSetTxtStr(&m_gui, m_pElemS2, "S2");
       gslc_ElemSetTxtStr(&m_gui, m_pElemS3, "");
@@ -729,6 +762,7 @@ void stepConfigButtonPressed(){
         gslc_ElemSetFillEn(&m_gui,m_pElemPlusBtn,true);
       }
       tempTargetTimeMin = s3TargetTimeMin;
+      tempTargetTemp = s3TargetTemp;
       gslc_ElemSetTxtStr(&m_gui, m_pElemS1, "");
       gslc_ElemSetTxtStr(&m_gui, m_pElemS2, "");
       gslc_ElemSetTxtStr(&m_gui, m_pElemS3, "S3");
@@ -750,6 +784,7 @@ void stepConfigButtonPressed(){
         gslc_ElemSetFillEn(&m_gui,m_pElemPlusBtn,true);
       }
       tempTargetTimeMin = s4TargetTimeMin;
+      tempTargetTemp = s4TargetTemp;
       gslc_ElemSetTxtStr(&m_gui, m_pElemS1, "");
       gslc_ElemSetTxtStr(&m_gui, m_pElemS2, "");
       gslc_ElemSetTxtStr(&m_gui, m_pElemS3, "");
@@ -771,6 +806,7 @@ void stepConfigButtonPressed(){
         gslc_ElemSetFillEn(&m_gui,m_pElemPlusBtn,true);
       }
       tempTargetTimeMin = s5TargetTimeMin;
+      tempTargetTemp = s5TargetTemp;
       gslc_ElemSetTxtStr(&m_gui, m_pElemS1, "");
       gslc_ElemSetTxtStr(&m_gui, m_pElemS2, "");
       gslc_ElemSetTxtStr(&m_gui, m_pElemS3, "");
@@ -792,6 +828,7 @@ void stepConfigButtonPressed(){
         gslc_ElemSetFillEn(&m_gui,m_pElemPlusBtn,true);
       }
       tempTargetTimeMin = s6TargetTimeMin;
+      tempTargetTemp = s6TargetTemp;
       gslc_ElemSetTxtStr(&m_gui, m_pElemS1, "");
       gslc_ElemSetTxtStr(&m_gui, m_pElemS2, "");
       gslc_ElemSetTxtStr(&m_gui, m_pElemS3, "");
@@ -890,6 +927,8 @@ void readTemp(){
     actTempDisplay = "0" + String(Tc, 0);
   } else if (Tc >= 100) {
     actTempDisplay = String(Tc, 0);
+  } else if (Tc == -127) {
+    actTempDisplay = "Error";
   } else {
     actTempDisplay = "00" + String(Tc, 0);
   }
@@ -935,7 +974,7 @@ void handleElapsedTimer(){
         }
       }   
     }
-    if ((targetTimeMin > 0 && targetTemp == 00) || (targetTimeMin > 0 && targetTemp >= actTemp)) {
+    if ((targetTimeMin > 0 && targetTemp == 00) || (targetTimeMin > 0 && actTemp >= targetTemp)) { 
       if (actTimerPaused == 0) {
           countElapsedTimer.SetStopTime(0,targetTimeMin,targetTimeSec);
           countElapsedTimer.StartTimer();
@@ -963,7 +1002,14 @@ void handleElapsedTimer(){
     //do nothing
   }
 }
-
+void stopTimerNextStep(){
+  countElapsedTimer.StopTimer();
+    gslc_ElemSetTxtStr(&m_gui, m_pElemActTimeTxt, "00:00");
+    actTimeSec = "00";
+    actTimeMin = "00";
+    actTimerPaused = 0;
+    
+}
 void setTargetTime(){
   if (autoOrMan == 0){ 
     manTargetTimeMin = tempTargetTimeMin;  
@@ -984,7 +1030,8 @@ void setTargetTime(){
       }
     }
   }
-  changeSetTimeDisplay(tempTargetTimeMin);    
+  changeSetTimeDisplay(tempTargetTimeMin);
+  saveConfigFile();    
 }
 
 void setTargetTempFunc(){
@@ -1009,6 +1056,7 @@ void setTargetTempFunc(){
     }
   }
   changeSetTempDisplay(tempTargetTemp);
+  saveConfigFile();
 }
 //Update display whit acutal target temp
 void changeSetTempDisplay(int incTemp) {
@@ -1017,7 +1065,7 @@ void changeSetTempDisplay(int incTemp) {
     tempDisplayText = "00" + String(incTemp) + " C";
   } else if (incTemp < 100 && incTemp > 10) {
     tempDisplayText = "0" + String(incTemp) + " C";
-  } else if (incTemp > 100){
+  } else if (incTemp >= 100){
     tempDisplayText = String(incTemp) + " C";
   }
         
@@ -1090,12 +1138,14 @@ void handleTimerFinished() {
     valueTimer = "null";
     gslc_ElemSetTxtStr(&m_gui, m_pElemPlayBtn, "Start");
     playPauseStop = 0;
+    sendPushNotification("Timer finnshed. Actual temp: " + String(actTemp));
   } else {
     gslc_ElemSetTxtStr(&m_gui, m_pElemPlayBtn, "Pause");
     playPauseStop = 1;
     runningStep = tempNextStep;
     stepConfigButtonPressed();
     valueTimer = "Start";
+    sendPushNotification("Timer finnshed. Actual temp: " + String(actTemp));
   }
   
 }
@@ -1139,6 +1189,8 @@ void saveConfigFile(){
   json["s6TargetTemp"] = s6TargetTemp;
   json["s6Pump"] = s6Pump;
   json["s6Next"] = s6Next;
+  json["pushoverAppKey"] = pushoverAppKey;
+  json["pushoverUserKey"] = pushoverUserKey;
   File configFile = SPIFFS.open(BREWER_CONFIG, "w");
   if (!configFile) {
     Serial.println("failed to open config file for writing");
@@ -1148,6 +1200,44 @@ void saveConfigFile(){
   configFile.close();
   //end save
 }
+//pushover functions
+void sendPushNotification(String message) {
+  if (isSendPush == false) {
+    // Form the string
+    Serial.print("key");
+    Serial.println(pushoverAppKey);
+    pushParameters = "token=" + pushoverAppKey + "&user=" + pushoverUserKey + "&message=" + message;
+    isSendPush = true;
+    if(!https.connect("api.pushover.net", 443)){
+      Serial.println("Connection failed to push server");
+    } else {
+      Serial.println("Connected to push server");
+    }
+    
+  }
+  
+}
+// Keep track of the push server connection status without holding 
+// up the code execution
+void updatePushServer(){
+  //Serial.println("start send push");
+  if(isSendPush == true && https.connected()) {
+    int length = pushParameters.length();
+    Serial.println("Posting push notification: " + pushParameters);
+    https.println("POST /1/messages.json HTTP/1.1");
+    https.println("Host: api.pushover.net");
+    https.println("Connection: close\r\nContent-Type: application/x-www-form-urlencoded");
+    https.print("Content-Length: ");
+    https.print(length);
+    https.println("\r\n");
+    https.print(pushParameters);
+
+    https.stop();
+    isSendPush = false;
+    Serial.println("Finished posting notification.");
+  }
+}
+
 // ------------------------------------------------
 // Create page elements
 // ------------------------------------------------
@@ -1241,6 +1331,8 @@ bool InitGUI()
   String startTempDisplay = "";
   if (manTargetTemp <= 9){
     startTempDisplay = "00" + String(manTargetTemp) + " C";
+  } else if (manTargetTemp > 99) {
+    startTempDisplay = String(manTargetTemp) + " C";
   } else {
     startTempDisplay = "0" + String(manTargetTemp) + " C";
   }
@@ -1398,44 +1490,53 @@ void getStats(){
   int tempSendActiveStep = 0;
   int tempSendPumpStatus = 0;
   int tempSendTargetTimeMin = 0;
+  int tempSendNextStatus = 0;
   if (autoOrMan == 0) {
     tempSendActiveStep = 0;
     tempSendTargetTemp = manTargetTemp;
     tempSendPumpStatus = manPump;
     tempSendTargetTimeMin = manTargetTimeMin;
+    tempSendNextStatus = manNext;
   } else if(selectedStep == 1){
     tempSendActiveStep = 1; 
     tempSendTargetTemp = s1TargetTemp;
     tempSendPumpStatus = s1Pump;
     tempSendTargetTimeMin = s1TargetTimeMin;
+    tempSendNextStatus = s1Next;
   } else if(selectedStep == 2){
     tempSendActiveStep = 2;
     tempSendTargetTemp = s2TargetTemp;
+    
     tempSendPumpStatus = s2Pump;
     tempSendTargetTimeMin = s2TargetTimeMin;
+    tempSendNextStatus = s2Next;
   } else if(selectedStep == 3){
     tempSendActiveStep = 3;
     tempSendTargetTemp = s3TargetTemp;
     tempSendPumpStatus = s3Pump;
     tempSendTargetTimeMin = s3TargetTimeMin;
+    tempSendNextStatus = s3Next;
   } else if(selectedStep == 4){
     tempSendActiveStep = 4;
     tempSendTargetTemp = s4TargetTemp;
     tempSendPumpStatus = s4Pump;
     tempSendTargetTimeMin = s4TargetTimeMin;
+    tempSendNextStatus = s4Next;
   } else if(selectedStep == 5){
     tempSendActiveStep = 5;
     tempSendTargetTemp = s5TargetTemp;
     tempSendPumpStatus = s5Pump;
     tempSendTargetTimeMin = s5TargetTimeMin;
+    tempSendNextStatus = s5Next;
   } else if(selectedStep == 6){
     tempSendActiveStep = 6;
     tempSendTargetTemp = s6TargetTemp;
     tempSendPumpStatus = s6Pump;
     tempSendTargetTimeMin = s6TargetTimeMin;
+    tempSendNextStatus = s6Next;
   }
   String tempTempActiveStep = String(tempSendActiveStep);
-  String sendStats = tempTemp + "," + tempTempActiveStep + "," + String(tempSendTargetTemp) + "," + String(tempSendPumpStatus) + "," + actTimeMin + "," + actTimeSec + "," + String(tempSendTargetTimeMin) + "," + String(playPauseStop); 
+  String sendStats = tempTemp + "," + tempTempActiveStep + "," + String(tempSendTargetTemp) + "," + String(tempSendPumpStatus) + "," + actTimeMin + "," + actTimeSec + "," + String(tempSendTargetTimeMin) + "," + String(playPauseStop) + "," + String(tempSendNextStatus); 
   server.send(200, "text/html", sendStats);
 }
 void getStart(){
@@ -1514,14 +1615,32 @@ void getPump(){
     minusButtonPressed();
   }
 }
+void getNext(){
+  if(!stepConfigPlusNext == 1){
+    plusButtonPressed();
+  }
+}
+
 void getTempPlus(){
   tempTargetTemp = tempTargetTemp + 1;
+  setTargetTempFunc();
+  server.send(200, "text/html", String(tempTargetTemp));
+}
+void getTempPlusLong(){
+  tempTargetTemp = tempTargetTemp + 10;
   setTargetTempFunc();
   server.send(200, "text/html", String(tempTargetTemp));
 }
 void getTempMinus(){
   if (tempTargetTemp > 0) {
     tempTargetTemp = tempTargetTemp - 1;
+    setTargetTempFunc();
+    server.send(200, "text/html", String(tempTargetTemp));
+  }  
+}
+void getTempMinusLong(){
+  if (tempTargetTemp >= 10) {
+    tempTargetTemp = tempTargetTemp - 10;
     setTargetTempFunc();
     server.send(200, "text/html", String(tempTargetTemp));
   }  
@@ -1533,8 +1652,20 @@ void getTimeMinus(){
     server.send(200, "text/html", String(tempTargetTimeMin));
   }
 }
+void getTimeMinusLong(){  
+  if (tempTargetTimeMin >= 10) {
+    tempTargetTimeMin = tempTargetTimeMin - 10;
+    setTargetTime();
+    server.send(200, "text/html", String(tempTargetTimeMin));
+  }
+}
 void getTimePlus(){
   tempTargetTimeMin = tempTargetTimeMin + 1;
+  setTargetTime();
+  server.send(200, "text/html", String(tempTargetTimeMin));
+}
+void getTimePlusLong(){
+  tempTargetTimeMin = tempTargetTimeMin + 10;
   setTargetTime();
   server.send(200, "text/html", String(tempTargetTimeMin));
 }
@@ -1605,7 +1736,9 @@ void setup() {
           s6TargetTimeMin = json["s6TargetTimeMin"];
           s6TargetTemp = json["s6TargetTemp"];
           s6Pump = json["s6Pump"];
-          s6Next = json["s6Next"];  
+          s6Next = json["s6Next"];
+          pushoverAppKey = json["pushoverAppKey"].as<String>();
+          pushoverUserKey = json["pushoverUserKey"].as<String>();  
         } else {
           Serial.println("failed to load json config");
         }
@@ -1631,13 +1764,19 @@ void setup() {
   server.on("/start", HTTP_GET, getStart);
   server.on("/stop", HTTP_GET, getStop);
   server.on("/pump", HTTP_GET, getPump);
+  server.on("/next", HTTP_GET, getNext);
   server.on("/tempplus", HTTP_GET, getTempPlus);
+  server.on("/temppluslong", HTTP_GET, getTempPlusLong);
   server.on("/tempminus", HTTP_GET, getTempMinus);
+  server.on("/tempminuslong", HTTP_GET, getTempMinusLong);
   server.on("/timeplus", HTTP_GET, getTimePlus);
+  server.on("/timepluslong", HTTP_GET, getTimePlusLong);
   server.on("/timeminus", HTTP_GET, getTimeMinus);
+  server.on("/timeminuslong", HTTP_GET, getTimeMinusLong);
   server.on("/changestep", HTTP_POST, postChangeStep);
   server.serveStatic("/", SPIFFS, "/index.html");
-  server.serveStatic("/jquery-3.4.1.min.js", SPIFFS, "/jquery-3.4.1.min.js"); 
+  server.serveStatic("/jquery-3.4.1.min.js", SPIFFS, "/jquery-3.4.1.min.js");
+  server.serveStatic("/jquery.finger.js", SPIFFS, "/jquery.finger.js"); 
   server.begin();
   MDNS.addService("http", "tcp", 80);
 
@@ -1664,6 +1803,8 @@ void setup() {
   //GPIO 3 (RX) swap the pin to a GPIO.
   pinMode(3, FUNCTION_3); 
   sensors.begin(); 
+
+  https.setInsecure();
 }
 
 // -----------------------------------
@@ -1676,8 +1817,10 @@ void loop()
   server.handleClient();
   ftpSrv.handleFTP();
   unsigned long currentMillis = millis();
-
-  //every 5000 millis
+  if (pushoverEnabled == 1){
+    updatePushServer();
+  }
+  //every 3000 millis
   if (currentMillis - previousMillis >= interval) {
     previousMillis = currentMillis;
 
@@ -1705,8 +1848,8 @@ void loop()
     String tempTimeSet = actTimeMin + ":" + actTimeSec;
     const char * cTime = tempTimeSet.c_str();
     gslc_ElemSetTxtStr(&m_gui, m_pElemActTimeTxt, cTime);
-    Serial.print("elapsedtimer");
-    Serial.println(countElapsedTimer.TimeCheck());
+    //Serial.print("elapsedtimer");
+    //Serial.println(countElapsedTimer.TimeCheck());
     if (countElapsedTimer.TimeCheck() == 1){
       handleTimerFinished();
     }
